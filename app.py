@@ -1,3 +1,5 @@
+from prevision import generer_previsions
+
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -20,14 +22,34 @@ st.markdown("Analyse prédictive des flux de trésorerie et gestion du risque fi
 # =========================
 # CHARGEMENT DES DONNÉES
 # =========================
-df = pd.read_excel("previsions_tresorerie_resultats.xlsx")
+forecast = generer_previsions()
+
+# Bouton refresh (IMPORTANT : doit recréer les données)
+if st.button("🔄 Actualiser les prévisions"):
+    forecast = generer_previsions()
+    st.success("Prévisions mises à jour avec succès !")
+
+# =========================
+# NETTOYAGE DES DONNÉES
+# =========================
+df = forecast[['ds', 'yhat', 'optimiste', 'pessimiste']].copy()
+
+df.rename(columns={
+    "ds": "Date",
+    "yhat": "Prévision normale",
+    "optimiste": "Scénario optimiste",
+    "pessimiste": "Scénario pessimiste"
+}, inplace=True)
+
+# Format date propre
+df["Date"] = pd.to_datetime(df["Date"]).dt.strftime("%Y-%m")
 
 # =========================
 # KPI FINANCIERS
 # =========================
-cash_min = df['pessimiste'].min()
-cash_max = df['optimiste'].max()
-cash_moyen = df['yhat'].mean()
+cash_min = forecast['pessimiste'].min()
+cash_max = forecast['optimiste'].max()
+cash_moyen = forecast['yhat'].mean()
 
 col1, col2, col3 = st.columns(3)
 
@@ -65,7 +87,7 @@ else:
     st.error(f"🔴 Risque élevé : {score_risque}/100")
 
 # =========================
-# ANALYSE DU RISQUE (DAF)
+# ANALYSE DU RISQUE
 # =========================
 st.subheader("🚦 Analyse du risque")
 
@@ -83,9 +105,10 @@ st.warning(risque)
 st.info(recommandation)
 
 # =========================
-# TABLEAU
+# TABLEAU PROPRE
 # =========================
 st.subheader("📋 Données de prévision")
+
 st.dataframe(df, use_container_width=True)
 
 # =========================
@@ -102,15 +125,15 @@ with open("previsions_tresorerie_resultats.xlsx", "rb") as file:
     )
 
 # =========================
-# GRAPHIQUE PRO
+# GRAPHIQUE PROPRE
 # =========================
 st.subheader("📈 Projection des flux de trésorerie")
 
 fig, ax = plt.subplots(figsize=(12,6))
 
-ax.plot(df['ds'], df['yhat'], label="Scénario normal", linewidth=2)
-ax.plot(df['ds'], df['optimiste'], label="Scénario optimiste", linestyle="--")
-ax.plot(df['ds'], df['pessimiste'], label="Scénario pessimiste", linestyle="--")
+ax.plot(forecast['ds'], forecast['yhat'], label="Scénario normal", linewidth=2)
+ax.plot(forecast['ds'], forecast['optimiste'], label="Scénario optimiste", linestyle="--")
+ax.plot(forecast['ds'], forecast['pessimiste'], label="Scénario pessimiste", linestyle="--")
 
 ax.axhline(0, color='red', linestyle='--', label="Seuil de crise")
 
@@ -124,4 +147,6 @@ st.pyplot(fig)
 # =========================
 # FOOTER
 # =========================
-st.success("✔ Analyse financière complète générée avec succès")
+st.caption("Dashboard financier automatisé - Mise à jour via modèle Prophet")
+
+
